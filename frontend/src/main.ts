@@ -16,11 +16,15 @@ interface Lesson {
   folder: string;
   readme: string;
   lessonCode: string;
+  lessonFilename?: string;
   exerciseCode: string;
+  exerciseFilename?: string;
   solutionCode: string;
+  solutionFilename?: string;
+  extraFiles?: Record<string, string | undefined>;
 }
 
-const lessons: Lesson[] = catalogData as Lesson[];
+const lessons: Lesson[] = catalogData as unknown as Lesson[];
 
 // Application State
 let activeIndex = 0;
@@ -30,6 +34,7 @@ let searchQuery = "";
 let isSolutionRevealed = false;
 let isSidebarOpen = true;
 let terminalMode: "normal" | "collapsed" | "expanded" = "normal";
+let activeDoc: { title: string; content: string } | null = null;
 const DEFAULT_SCRATCHPAD_CODE = `// Scratchpad - Freeform TypeScript IDE\n// Comments are highlighted in green!\n\ninterface Developer {\n  name: string;\n  primaryLanguage: "TypeScript";\n  yearsExperience: number;\n}\n\nconst dev: Developer = {\n  name: "Karan",\n  primaryLanguage: "TypeScript",\n  yearsExperience: 5\n};\n\nconsole.log(\`Developer: \${dev.name} (\${dev.primaryLanguage})\`);\n`;
 let scratchpadCode = DEFAULT_SCRATCHPAD_CODE;
 
@@ -196,12 +201,24 @@ function renderApp() {
         </div>
       </aside>
 
-      <!-- Center Pane: Markdown Reader -->
+      <!-- Center Pane: Markdown Reader & Companion Document Viewer -->
       ${layoutMode !== 'studio' ? `
         <main class="reader-pane ${layoutMode === 'reader' ? 'fullscreen' : ''}">
-          <article class="markdown-body">
-            ${renderMarkdown(currentLesson.readme)}
-          </article>
+          ${activeDoc ? `
+            <div class="doc-viewer-header">
+              <button class="doc-back-btn" id="btn-back-to-lesson">
+                ${icons.arrowLeft} Back to Lesson Guide
+              </button>
+              <span class="doc-title-badge">${escapeHtml(activeDoc.title)}</span>
+            </div>
+            <article class="markdown-body">
+              ${renderMarkdown(activeDoc.content)}
+            </article>
+          ` : `
+            <article class="markdown-body">
+              ${renderMarkdown(currentLesson.readme)}
+            </article>
+          `}
         </main>
       ` : ''}
 
@@ -211,16 +228,16 @@ function renderApp() {
           <!-- Tab Bar -->
           <div class="studio-header">
             <div class="studio-tabs">
-              <button class="tab-btn ${activeTab === 'exercise' ? 'active' : ''}" id="tab-exercise">
-                ${icons.code} Exercise.ts
+              <button class="tab-btn ${activeTab === 'exercise' ? 'active' : ''}" id="tab-exercise" title="Open starter code (${escapeHtml(currentLesson.exerciseFilename || 'exercise.ts')})">
+                ${icons.code} ${escapeHtml(currentLesson.exerciseFilename || 'Exercise.ts')}
               </button>
-              <button class="tab-btn ${activeTab === 'solution' ? 'active' : ''}" id="tab-solution">
-                ${icons.eye} Solution.ts
+              <button class="tab-btn ${activeTab === 'solution' ? 'active' : ''}" id="tab-solution" title="Open reference solution (${escapeHtml(currentLesson.solutionFilename || 'solution.ts')})">
+                ${icons.eye} ${escapeHtml(currentLesson.solutionFilename || 'Solution.ts')}
               </button>
-              <button class="tab-btn ${activeTab === 'lesson' ? 'active' : ''}" id="tab-lesson">
-                ${icons.book} Lesson.ts
+              <button class="tab-btn ${activeTab === 'lesson' ? 'active' : ''}" id="tab-lesson" title="Open lesson script (${escapeHtml(currentLesson.lessonFilename || 'lesson.ts')})">
+                ${icons.book} ${escapeHtml(currentLesson.lessonFilename || 'Lesson.ts')}
               </button>
-              <button class="tab-btn ${activeTab === 'scratch' ? 'active' : ''}" id="tab-scratch">
+              <button class="tab-btn ${activeTab === 'scratch' ? 'active' : ''}" id="tab-scratch" title="Open freeform Scratchpad">
                 ${icons.terminal} Scratchpad.ts
               </button>
             </div>
@@ -376,6 +393,7 @@ function attachEventHandlers() {
     item.addEventListener("click", () => {
       const idx = parseInt(item.getAttribute("data-index") || "0", 10);
       activeIndex = idx;
+      activeDoc = null;
       isSolutionRevealed = false;
       renderApp();
     });
@@ -489,35 +507,168 @@ function attachEventHandlers() {
     renderApp();
   });
 
-  // Interactive In-App Studio Links (e.g. clicking [exercise.ts] or [solution.ts] in markdown)
+  // Back to Lesson Guide from Companion Doc
+  document.getElementById("btn-back-to-lesson")?.addEventListener("click", () => {
+    activeDoc = null;
+    renderApp();
+  });
+
+  // Interactive In-App Studio Links (e.g. clicking [exercise.ts], [legacy-code.js], [refactored.ts], [broken-cases.ts], [diagnosis-and-fixes.ts], [challenges.ts], etc.)
   document.querySelectorAll(".studio-link-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      const action = btn.getAttribute("data-action");
+      const fileTarget = (btn.getAttribute("data-file") || btn.getAttribute("data-action") || "").trim();
+      const cleanName = fileTarget.replace(/^\.\//, "").replace(/^.*[\\/]/, "").toLowerCase();
+
       if (layoutMode === "reader") {
         layoutMode = "split";
       }
-      if (action === "tab-exercise") {
+
+      const exName = (currentLesson.exerciseFilename || "").toLowerCase();
+      const solName = (currentLesson.solutionFilename || "").toLowerCase();
+      const lesName = (currentLesson.lessonFilename || "").toLowerCase();
+
+      if (
+        cleanName === exName ||
+        cleanName === "tab-exercise" ||
+        cleanName.includes("exercise") ||
+        cleanName.includes("legacy-code") ||
+        cleanName.includes("broken-cases") ||
+        cleanName.includes("challenge") ||
+        cleanName.includes("unit-tests")
+      ) {
         activeTab = "exercise";
-      } else if (action === "tab-solution") {
+      } else if (
+        cleanName === solName ||
+        cleanName === "tab-solution" ||
+        cleanName.includes("solution") ||
+        cleanName.includes("refactor") ||
+        cleanName.includes("diagnosis") ||
+        cleanName.includes("fix")
+      ) {
         activeTab = "solution";
         isSolutionRevealed = true;
-      } else if (action === "tab-lesson") {
+      } else if (
+        cleanName === lesName ||
+        cleanName === "tab-lesson" ||
+        cleanName.includes("lesson") ||
+        cleanName.includes("type-tests")
+      ) {
         activeTab = "lesson";
+      } else {
+        if (cleanName.includes("sol") || cleanName.includes("refactor") || cleanName.includes("fix")) {
+          activeTab = "solution";
+          isSolutionRevealed = true;
+        } else {
+          activeTab = "exercise";
+        }
       }
+
       renderApp();
       const ed = document.getElementById("code-editor") as HTMLTextAreaElement | null;
       ed?.focus();
     });
   });
 
-  // In-App Lesson Navigation Links (e.g. clicking [Lesson 00.1](./01-primitives-and-references/README.md))
+  // Companion Document Viewer Links (e.g. [walkthrough.md], [explanations.md], [answers-and-solutions/part1-answers.md], [PROGRESS.md])
+  document.querySelectorAll(".doc-link-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const docPath = (btn.getAttribute("data-doc") || "").trim();
+      const cleanDoc = docPath.replace(/^\.\//, "").toLowerCase();
+      const baseName = docPath.replace(/^.*[\\/]/, "").toLowerCase();
+
+      let docContent: string | null = null;
+      let docTitle = docPath.replace(/^.*[\\/]/, "");
+
+      // Search currentLesson.extraFiles first
+      if (currentLesson.extraFiles) {
+        for (const [k, v] of Object.entries(currentLesson.extraFiles)) {
+          const kClean = k.replace(/^\.\//, "").toLowerCase();
+          const kBase = k.replace(/^.*[\\/]/, "").toLowerCase();
+          if (kClean === cleanDoc || kBase === baseName || kClean.endsWith(cleanDoc) || kClean.endsWith(baseName)) {
+            docContent = v ?? null;
+            docTitle = k.replace(/^.*[\\/]/, "");
+            break;
+          }
+        }
+      }
+
+      // If not found in current lesson, search all lessons
+      if (!docContent) {
+        for (const l of lessons) {
+          if (l.extraFiles) {
+            for (const [k, v] of Object.entries(l.extraFiles)) {
+              const kClean = k.replace(/^\.\//, "").toLowerCase();
+              const kBase = k.replace(/^.*[\\/]/, "").toLowerCase();
+              if (kClean === cleanDoc || kBase === baseName) {
+                docContent = v ?? null;
+                docTitle = k.replace(/^.*[\\/]/, "");
+                break;
+              }
+            }
+          }
+          if (docContent) break;
+        }
+      }
+
+      if (docContent) {
+        activeDoc = { title: docTitle, content: docContent };
+        renderApp();
+        const reader = document.querySelector(".reader-pane");
+        if (reader) reader.scrollTop = 0;
+      }
+    });
+  });
+
+  // In-App Lesson Navigation Links (e.g. [Lesson 00.1](./01-primitives-and-references/README.md) or [01-fundamentals/](./01-fundamentals/))
   document.querySelectorAll(".lesson-link-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      const href = btn.getAttribute("data-href") || "";
-      const targetSlug = href.replace(/^\.\//, "").replace(/\/README\.md$/i, "").replace(/\.md$/i, "");
-      const foundIdx = lessons.findIndex(l => l.folder.includes(targetSlug) || l.slug.includes(targetSlug) || l.id.includes(targetSlug));
+      const href = (btn.getAttribute("data-href") || "").trim();
+      const target = href
+        .replace(/^\.\//, "")
+        .replace(/^\.\.\//, "")
+        .replace(/\/README\.md$/i, "")
+        .replace(/\.md$/i, "")
+        .replace(/\/$/, "")
+        .toLowerCase();
+
+      // Check if it's actually a companion doc in extraFiles
+      if (currentLesson.extraFiles) {
+        for (const [k, v] of Object.entries(currentLesson.extraFiles)) {
+          const kClean = k.replace(/^\.\//, "").toLowerCase();
+          if (kClean === target || kClean.includes(target) || target.includes(kClean)) {
+            if (k.endsWith(".md") && !k.toLowerCase().endsWith("readme.md") && v) {
+              activeDoc = { title: k.replace(/^.*[\\/]/, ""), content: v };
+              renderApp();
+              const reader = document.querySelector(".reader-pane");
+              if (reader) reader.scrollTop = 0;
+              return;
+            }
+          }
+        }
+      }
+
+      // Find matching lesson
+      const foundIdx = lessons.findIndex(l => {
+        const folder = l.folder.toLowerCase();
+        const slug = l.slug.toLowerCase();
+        const id = l.id.toLowerCase();
+        const lvlName = l.levelName.toLowerCase();
+        const lvlId = l.levelId.toLowerCase();
+
+        return (
+          slug === target ||
+          folder.includes(target) ||
+          id.includes(target) ||
+          lvlId === target ||
+          lvlName.includes(target) ||
+          target.includes(slug) ||
+          target.includes(folder)
+        );
+      });
+
       if (foundIdx !== -1) {
         activeIndex = foundIdx;
+        activeDoc = null;
         isSolutionRevealed = false;
         renderApp();
       }

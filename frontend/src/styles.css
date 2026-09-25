@@ -1266,3 +1266,97 @@ details .details-content {
     box-shadow: 4px 0 30px rgba(0, 0, 0, 0.8);
   }
 }
+
+/* ==========================================================================
+   Interactive In-App Links & Companion Doc Viewer
+   ========================================================================== */
+
+.markdown-body a {
+  color: #FFFFFF;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.markdown-body a:hover {
+  color: #A0A0A0;
+}
+
+.studio-link-btn,
+.doc-link-btn,
+.lesson-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #141414;
+  color: #FFFFFF;
+  border: 1px solid #333333;
+  padding: 2px 9px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+  margin: 0 2px;
+}
+
+.studio-link-btn:hover,
+.doc-link-btn:hover,
+.lesson-link-btn:hover {
+  background: #242424;
+  border-color: #FFFFFF;
+  color: #FFFFFF;
+  transform: translateY(-1px);
+}
+
+.studio-link-btn:active,
+.doc-link-btn:active,
+.lesson-link-btn:active {
+  transform: translateY(0);
+}
+
+/* Companion Document Viewer Top Bar */
+.doc-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-bottom: 24px;
+  background: #0E0E0E;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.doc-back-btn {
+  background: #1A1A1A;
+  border: 1px solid #333333;
+  color: #FFFFFF;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.15s ease;
+}
+
+.doc-back-btn:hover {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+}
+
+.doc-title-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+

@@ -182,20 +182,47 @@ function parseInline(text: string): string {
 
   // Intelligent internal routing for links
   res = res.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
-    const cleanHref = href.toLowerCase();
-    if (cleanHref.includes("exercise.ts")) {
-      return `<button type="button" class="studio-link-btn" data-action="tab-exercise">${label}</button>`;
+    const rawHref = href.trim();
+    const cleanHref = rawHref.toLowerCase();
+
+    // 1. External Web Links
+    if (cleanHref.startsWith("http://") || cleanHref.startsWith("https://")) {
+      return `<a href="${rawHref}" target="_blank" rel="noopener">${label}</a>`;
     }
-    if (cleanHref.includes("solution.ts")) {
-      return `<button type="button" class="studio-link-btn" data-action="tab-solution">${label}</button>`;
+
+    // 2. Markdown Files (.md)
+    if (cleanHref.endsWith(".md")) {
+      if (cleanHref.endsWith("readme.md")) {
+        return `<button type="button" class="lesson-link-btn" data-href="${rawHref}" title="Navigate to lesson">${label}</button>`;
+      }
+      return `<button type="button" class="doc-link-btn" data-doc="${rawHref}" title="Read companion guide: ${rawHref}">${label}</button>`;
     }
-    if (cleanHref.includes("lesson.ts")) {
-      return `<button type="button" class="studio-link-btn" data-action="tab-lesson">${label}</button>`;
+
+    // 3. Code Studio Files (.ts, .js, .tsx, .jsx, .json)
+    const isCodeFile =
+      cleanHref.endsWith(".ts") ||
+      cleanHref.endsWith(".js") ||
+      cleanHref.endsWith(".tsx") ||
+      cleanHref.endsWith(".jsx") ||
+      cleanHref.endsWith(".json") ||
+      cleanHref.includes("exercise") ||
+      cleanHref.includes("solution") ||
+      cleanHref.includes("legacy-code") ||
+      cleanHref.includes("refactor") ||
+      cleanHref.includes("broken-cases") ||
+      cleanHref.includes("diagnosis") ||
+      cleanHref.includes("challenge");
+
+    if (isCodeFile) {
+      return `<button type="button" class="studio-link-btn" data-file="${rawHref}" title="Open ${rawHref} in Studio">${label}</button>`;
     }
-    if (cleanHref.endsWith(".md") || cleanHref.startsWith("./") || cleanHref.startsWith("../")) {
-      return `<button type="button" class="lesson-link-btn" data-href="${href}">${label}</button>`;
+
+    // 4. In-App Lesson Navigation Links (e.g. ./01-fundamentals/, ../00-javascript-foundations/)
+    if (cleanHref.startsWith("./") || cleanHref.startsWith("../") || cleanHref.includes("/") || cleanHref.endsWith("/")) {
+      return `<button type="button" class="lesson-link-btn" data-href="${rawHref}" title="Navigate to lesson">${label}</button>`;
     }
-    return `<a href="${href}" target="_blank" rel="noopener">${label}</a>`;
+
+    return `<a href="${rawHref}" target="_blank" rel="noopener">${label}</a>`;
   });
 
   // Clean badges
