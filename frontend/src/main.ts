@@ -29,6 +29,7 @@ let layoutMode: "split" | "reader" | "studio" = "split";
 let searchQuery = "";
 let isSolutionRevealed = false;
 let isSidebarOpen = true;
+let terminalMode: "normal" | "collapsed" | "expanded" = "normal";
 let scratchpadCode = `// Scratchpad - Freeform TypeScript IDE\n// Comments are highlighted in green!\n\ninterface Developer {\n  name: string;\n  primaryLanguage: "TypeScript";\n  yearsExperience: number;\n}\n\nconst dev: Developer = {\n  name: "Karan",\n  primaryLanguage: "TypeScript",\n  yearsExperience: 5\n};\n\nconsole.log(\`Developer: \${dev.name} (\${dev.primaryLanguage})\`);\n`;
 
 // LocalStorage Persistence
@@ -223,23 +224,36 @@ function renderApp() {
               </button>
             </div>
 
-            <div class="studio-actions">
+            <div class="studio-actions-bar">
               ${activeTab === 'solution' && !isSolutionRevealed ? `
-                <button class="action-btn" id="btn-reveal-solution">
-                  ${icons.eye} Reveal Solution
+                <button class="studio-btn subtle" id="btn-reveal-solution" title="Reveal reference solution">
+                  ${icons.eye}
+                  <span>Reveal Solution</span>
                 </button>
               ` : ''}
-              
-              <button class="action-btn ${isCompleted ? 'success' : ''}" id="btn-toggle-mastered">
-                ${icons.check} ${isCompleted ? 'Mastered' : 'Mark as Mastered'}
-              </button>
 
-              <button class="action-btn" id="btn-reset-code" title="Reset code to initial template">
-                ${icons.refresh} Reset
-              </button>
+              <div class="studio-btn-group">
+                <button class="studio-btn ${isCompleted ? 'mastered' : ''}" id="btn-toggle-mastered" title="Toggle Mastered state">
+                  ${icons.check}
+                  <span>${isCompleted ? 'Mastered' : 'Mark as Mastered'}</span>
+                </button>
 
-              <button class="action-btn primary" id="btn-run-code">
-                ${icons.play} Run Code
+                <button class="studio-btn" id="btn-reset-code" title="Reset code to initial template">
+                  ${icons.refresh}
+                  <span>Reset</span>
+                </button>
+
+                <button class="studio-btn primary" id="btn-run-code" title="Compile & Run (Ctrl+Enter)">
+                  ${icons.play}
+                  <span>Run Code</span>
+                  <kbd>Ctrl+↵</kbd>
+                </button>
+              </div>
+
+              <div class="studio-header-divider"></div>
+
+              <button class="studio-icon-btn ${layoutMode === 'studio' ? 'active' : ''}" id="btn-expand-ide" title="${layoutMode === 'studio' ? 'Restore Split View' : 'Expand IDE Fullscreen'}">
+                ${layoutMode === 'studio' ? icons.minimize : icons.maximize}
               </button>
             </div>
           </div>
@@ -262,26 +276,33 @@ function renderApp() {
           </div>
 
           <!-- Bottom Console / Terminal -->
-          <div class="terminal-pane">
+          <div class="terminal-pane ${terminalMode === 'collapsed' ? 'terminal-collapsed' : terminalMode === 'expanded' ? 'terminal-maximized' : ''}">
             <div class="terminal-header">
               <div class="terminal-title">
                 <span class="terminal-indicator ${terminalStatus}"></span>
-                <span>Console Output</span>
+                <span>Terminal</span>
                 ${terminalDuration > 0 ? `<span class="terminal-metric">(${terminalDuration}ms)</span>` : ''}
               </div>
               <div class="terminal-tools">
-                <button class="terminal-clear-btn" id="btn-clear-terminal">Clear</button>
+                <button class="terminal-clear-btn" id="btn-clear-terminal" title="Clear terminal logs">Clear</button>
+                <button class="terminal-icon-btn" id="btn-toggle-terminal" title="${terminalMode === 'collapsed' ? 'Expand Terminal' : 'Collapse Terminal'}">
+                  ${terminalMode === 'collapsed' ? icons.chevronUp : icons.chevronDown}
+                </button>
               </div>
             </div>
             <div class="terminal-output" id="terminal-output">
-              ${terminalLogs.map(l => `
+              ${terminalLogs.length > 0 ? terminalLogs.map(l => `
                 <div class="terminal-line ${l.type}">
                   ${l.type === 'pass' ? '<span class="badge-tag pass">PASS</span>' : ''}
                   ${l.type === 'fail' ? '<span class="badge-tag fail">FAIL</span>' : ''}
                   ${l.type === 'info' ? '<span class="badge-tag info">INFO</span>' : ''}
                   ${escapeHtml(l.text)}
                 </div>
-              `).join("")}
+              `).join("") : `
+                <div class="terminal-line info" style="color: #666666;">
+                  &gt; TypeScript engine ready. Press Run Code (Ctrl+↵) to evaluate.
+                </div>
+              `}
             </div>
           </div>
         </section>
@@ -450,6 +471,18 @@ function attachEventHandlers() {
     terminalLogs = [];
     terminalStatus = "idle";
     terminalDuration = 0;
+    renderApp();
+  });
+
+  // Expand / Restore IDE Fullscreen
+  document.getElementById("btn-expand-ide")?.addEventListener("click", () => {
+    layoutMode = layoutMode === "studio" ? "split" : "studio";
+    renderApp();
+  });
+
+  // Toggle Terminal Height / Collapse
+  document.getElementById("btn-toggle-terminal")?.addEventListener("click", () => {
+    terminalMode = terminalMode === "collapsed" ? "normal" : "collapsed";
     renderApp();
   });
 
