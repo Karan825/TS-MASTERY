@@ -1,0 +1,36 @@
+{
+  "name": "typescript-mastery-course",
+  "version": "1.0.0",
+  "description": "Production-grade, end-to-end TypeScript mastery course from JavaScript foundations to advanced type engineering",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build-catalog.js && vite build",
+    "build:catalog": "node scripts/build-catalog.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:project": "vitest run 22-project",
+    "test:types": "vitest run 21-testing",
+    "project:run": "tsx 22-project/workflow-compliance-engine/src/index.ts"
+  },
+  "keywords": [
+    "typescript",
+    "course",
+    "type-system",
+    "generics",
+    "advanced-types",
+    "interview-prep"
+  ],
+  "author": "Antigravity Senior TypeScript Educator",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/prismjs": "^1.26.6",
+    "prismjs": "^1.30.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

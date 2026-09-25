@@ -1,0 +1,8 @@
+node_modules/
+dist/
+frontend/dist/
+frontend/.scratch/
+.scratch/
+*.log
+.DS_Store
+Thumbs.db
