@@ -1,4 +1,5 @@
-// TypeScript Execution Engine (Server-backed + In-Browser Fallback)
+// TypeScript Execution Engine (Server-backed + In-Browser Sucrase Engine)
+import { transform } from "sucrase";
 
 export interface RunResult {
   success: boolean;
@@ -10,13 +11,18 @@ export interface RunResult {
 export async function executeTypeScript(code: string, isTest: boolean = false): Promise<RunResult> {
   const startTime = performance.now();
 
-  // Try dev server API first (which runs tsx and provides authentic TypeScript compiler checks)
+  // 1. Try local dev server API if available (running tsx on Node)
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+
     const res = await fetch("/api/run-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, isTest })
+      body: JSON.stringify({ code, isTest }),
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
@@ -27,15 +33,15 @@ export async function executeTypeScript(code: string, isTest: boolean = false): 
         isTest
       };
     }
-  } catch (e) {
-    // Server not available, proceed to client-side runner fallback
+  } catch {
+    // Dev server unavailable or running on static GitHub Pages - execute client-side with Sucrase
   }
 
-  // Client-Side In-Browser Runner Fallback
-  return runInBrowserSandbox(code, startTime, isTest);
+  // 2. Battle-tested Client-Side Sucrase Execution
+  return runInBrowserWithSucrase(code, startTime, isTest);
 }
 
-function runInBrowserSandbox(tsCode: string, startTime: number, isTest: boolean): RunResult {
+function runInBrowserWithSucrase(tsCode: string, startTime: number, isTest: boolean): RunResult {
   const logs: string[] = [];
 
   // Capture console
@@ -62,14 +68,24 @@ function runInBrowserSandbox(tsCode: string, startTime: number, isTest: boolean)
   let success = true;
 
   try {
-    // Strip TypeScript types for browser execution
-    const jsCode = stripTypeScript(tsCode);
-    // Execute inside safe function scope
-    const runner = new Function(jsCode);
+    // Transpile TypeScript to JavaScript via Sucrase
+    const transpiled = transform(tsCode, { transforms: ["typescript"] });
+
+    // Clean module exports & imports for clean function-level execution
+    let executableJs = transpiled.code
+      .replace(/\bimport\s+type\s+[^;]+;?/g, "")
+      .replace(/\bimport\s+[^;]+;?/g, "")
+      .replace(/\bexport\s+default\s+/g, "")
+      .replace(/\bexport\s+(async\s+)?(function|const|let|var|class)\s+/g, "$1$2 ")
+      .replace(/\bexport\s*\{[^}]*\};?/g, "");
+
+    // Execute in sandboxed Function scope
+    const runner = new Function(executableJs);
     runner();
   } catch (err: any) {
     success = false;
-    logs.push(`[RUNTIME ERROR] ${err.message || String(err)}`);
+    const msg = err.message || String(err);
+    logs.push(`[RUNTIME ERROR] ${msg}`);
   } finally {
     // Restore console
     console.log = originalLog;
@@ -98,33 +114,4 @@ function formatArg(arg: any): string {
     }
   }
   return String(arg);
-}
-
-// Lightweight TypeScript type stripper for client-side fallback
-export function stripTypeScript(ts: string): string {
-  let js = ts;
-
-  // Remove type-only imports and exports: import type ...
-  js = js.replace(/import\s+type\s+[^;]+;/g, "");
-  js = js.replace(/export\s+type\s+[^;]+;/g, "");
-
-  // Remove interfaces
-  js = js.replace(/interface\s+[\w<>]+\s*(\s+extends\s+[\w<>,\s]+)?\s*\{[\s\S]*?\}/g, "");
-
-  // Remove type aliases: type Foo = ...;
-  js = js.replace(/type\s+[\w<>]+\s*=\s*[\s\S]*?;/g, "");
-
-  // Remove 'as const' and type casts: as any, as string, etc.
-  js = js.replace(/\s+as\s+[\w<>[\]|&]+/g, "");
-
-  // Remove generic type arguments on functions: foo<T>(...)
-  js = js.replace(/<[A-Za-z0-9_,\s]+>(?=\s*\()/g, "");
-
-  // Remove parameter type annotations: (a: number, b: string = "x")
-  js = js.replace(/(\w+)\s*:\s*[A-Za-z0-9_<>[\]|&\s]+/g, "$1");
-
-  // Remove return type annotations: ): string { or ): void =>
-  js = js.replace(/\)\s*:\s*[A-Za-z0-9_<>[\]|&\s]+(?=\s*(=>|\{))/g, ")");
-
-  return js;
 }

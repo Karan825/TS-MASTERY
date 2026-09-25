@@ -29,6 +29,7 @@
     "@types/node": "^26.6.2",
     "@types/prismjs": "^1.26.6",
     "prismjs": "^1.30.0",
+    "sucrase": "^3.35.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

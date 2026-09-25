@@ -30,7 +30,8 @@ let searchQuery = "";
 let isSolutionRevealed = false;
 let isSidebarOpen = true;
 let terminalMode: "normal" | "collapsed" | "expanded" = "normal";
-let scratchpadCode = `// Scratchpad - Freeform TypeScript IDE\n// Comments are highlighted in green!\n\ninterface Developer {\n  name: string;\n  primaryLanguage: "TypeScript";\n  yearsExperience: number;\n}\n\nconst dev: Developer = {\n  name: "Karan",\n  primaryLanguage: "TypeScript",\n  yearsExperience: 5\n};\n\nconsole.log(\`Developer: \${dev.name} (\${dev.primaryLanguage})\`);\n`;
+const DEFAULT_SCRATCHPAD_CODE = `// Scratchpad - Freeform TypeScript IDE\n// Comments are highlighted in green!\n\ninterface Developer {\n  name: string;\n  primaryLanguage: "TypeScript";\n  yearsExperience: number;\n}\n\nconst dev: Developer = {\n  name: "Karan",\n  primaryLanguage: "TypeScript",\n  yearsExperience: 5\n};\n\nconsole.log(\`Developer: \${dev.name} (\${dev.primaryLanguage})\`);\n`;
+let scratchpadCode = DEFAULT_SCRATCHPAD_CODE;
 
 // LocalStorage Persistence
 const STORAGE_PREFIX = "ts_mastery_";
@@ -451,14 +452,16 @@ function attachEventHandlers() {
     });
   }
 
-  // Reset Code
+  // Reset Code (Immediate & Reliable)
   document.getElementById("btn-reset-code")?.addEventListener("click", () => {
-    if (confirm("Reset current file to default starter code?")) {
-      if (activeTab === "exercise") {
-        saveCode(currentLesson.id, "exercise", currentLesson.exerciseCode || "");
-      }
-      renderApp();
+    localStorage.removeItem(`${STORAGE_PREFIX}code_${currentLesson.id}_${activeTab}`);
+    if (activeTab === "scratch") {
+      scratchpadCode = DEFAULT_SCRATCHPAD_CODE;
     }
+    terminalLogs = [{ text: `[RESET] Editor restored to default template for ${currentLesson.title}`, type: "info" }];
+    terminalStatus = "idle";
+    terminalDuration = 0;
+    renderApp();
   });
 
   // Run Code
